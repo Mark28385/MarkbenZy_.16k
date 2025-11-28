@@ -1,8 +1,74 @@
-<htm1>
+<!DOCTYPE html>
+<html lang="th">
 <head>
-<title>Test My First Web</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมกระโดดหลบสิ่งกีดขวาง</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: #87ceeb; /* สีท้องฟ้า */
+            display: block;
+        }
+        #game-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.5em;
+            color: #333;
+        }
+    </style>
 </head>
 <body>
-Hellow World!
+    <div id="game-info">
+        คะแนน: <span id="score">0</span>
+    </div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+    <script src="game.js"></script>
 </body>
 </html>
+<div id="credits-screen" class="game-menu">
+    <div class="credits-content">
+        <h2>✨ ผู้จัดทำเกม ✨</h2>
+        
+        <div class="team-member">
+            <h3>[ชื่อคุณ/ชื่อทีม]</h3>
+            <p>ตำแหน่ง: Game Concept & Lead Developer (แนวคิดและนักพัฒนาหลัก)</p>
+        </div>
+        
+        <div class="team-member">
+            <h3>[ชื่อผู้ร่วมงาน (ถ้ามี)]</h3>
+            <p>ตำแหน่ง: Graphics Designer / Level Designer</p>
+        </div>
+        
+        <div class="acknowledgement">
+            <h4>❤️ เทคโนโลยีที่ใช้ ❤️</h4>
+            <ul>
+                <li>HTML5 & Canvas API (สำหรับกราฟิกเกม)</li>
+                <li>Vanilla JavaScript (สำหรับ Game Logic)</li>
+                <li>CSS3 (สำหรับสไตล์และแอนิเมชัน)</li>
+            </ul>
+        </div>
+
+        <button id="close-credits" class="btn-primary">กลับสู่หน้าหลัก/เกม</button>
+    </div>
+</div>
+
+<button id="open-credits" style="position: absolute; bottom: 20px; left: 20px;" class="btn-secondary">ผู้จัดทำ</button>
+<div id="game-over-screen" class="game-menu">
+    <div class="game-over-content">
+        <h2>GAME OVER</h2>
+        <p>คะแนนสุดท้ายของคุณ: <span id="final-score">0</span></p>
+        <button id="restart-button" class="btn-primary">เริ่มเกมใหม่</button>
+    </div>
+</div>
