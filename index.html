@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fish Adventure: Mobile Edition - By Chayanan</title>
+    <title>Fish Adventure: Ultimate Edition - By Chayanan</title>
     <style>
-        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #01579b; font-family: 'Tahoma', sans-serif; overflow: hidden; touch-action: none; }
-        #game-container { position: relative; width: 100vw; height: 100vh; max-width: 800px; max-height: 1000px; overflow: hidden; background: linear-gradient(#4fc3f7, #01579b); }
-        canvas { width: 100%; height: 100%; display: block; }
+        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #012a4a; font-family: 'Tahoma', sans-serif; overflow: hidden; touch-action: none; }
+        #game-container { position: relative; width: 100%; height: 100%; max-width: 800px; max-height: 1000px; background: linear-gradient(#4fc3f7, #01579b); box-shadow: 0 0 50px rgba(0,0,0,0.5); border: 2px solid #fff; }
+        canvas { width: 100%; height: 100%; display: block; cursor: none; }
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.8); color: white; z-index: 10; text-align: center; padding: 20px; box-sizing: border-box; }
         .hidden { display: none !important; }
-        .menu-btn { padding: 15px 30px; margin: 10px; font-size: 20px; cursor: pointer; border: none; border-radius: 50px; background: #ffeb3b; color: #01579b; font-weight: bold; }
-        .hp-bar-container { position: absolute; top: 15px; right: 15px; width: 120px; height: 15px; background: #333; border: 2px solid white; border-radius: 10px; }
-        #hp-fill { width: 100%; height: 100%; background: #4caf50; transition: 0.1s; }
-        #boss-ui { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); width: 80%; height: 12px; background: #333; border: 2px solid white; display: none; }
-        #boss-hp-fill { width: 100%; height: 100%; background: #ff1744; }
-        #status-ui { position: absolute; top: 15px; left: 15px; color: #ffeb3b; font-weight: bold; font-size: 14px; }
+        .menu-btn { padding: 15px 40px; margin: 15px; font-size: 22px; cursor: pointer; border: none; border-radius: 50px; background: #ffeb3b; color: #01579b; font-weight: bold; box-shadow: 0 5px #fbc02d; transition: 0.2s; }
+        .menu-btn:active { transform: translateY(3px); box-shadow: 0 2px #fbc02d; }
+        .hp-bar-container { position: absolute; top: 15px; right: 15px; width: 120px; height: 18px; background: #333; border: 2px solid white; border-radius: 10px; overflow: hidden; }
+        #hp-fill { width: 100%; height: 100%; background: #4caf50; transition: 0.2s; }
+        #boss-ui { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80%; height: 15px; background: #333; border: 2px solid white; border-radius: 10px; display: none; overflow: hidden; }
+        #boss-hp-fill { width: 100%; height: 100%; background: #ff1744; transition: 0.3s; }
+        #status-ui { position: absolute; top: 15px; left: 15px; color: #ffeb3b; font-weight: bold; font-size: 16px; text-shadow: 1px 1px 2px #000; }
     </style>
 </head>
 <body>
@@ -27,14 +28,14 @@
     <div id="boss-ui"><div id="boss-hp-fill"></div></div>
 
     <div id="main-menu" class="overlay">
-        <h2>FISH ADVENTURE</h2>
-        <p>แตะค้างแล้วลากเพื่อว่ายน้ำหลบศัตรู!</p>
+        <h1 style="font-size: 40px; margin-bottom: 10px;">FISH ADVENTURE</h1>
+        <p>คอม: ใช้ปุ่มลูกศร หรือ เมาส์ลาก<br>มือถือ: ใช้นิ้วลากตัวปลา</p>
         <button class="menu-btn" onclick="startGame()">เริ่มเล่นเกม</button>
     </div>
 
     <div id="game-over" class="overlay hidden">
-        <h2 id="end-title">จบเกม</h2>
-        <p id="final-score"></p>
+        <h2 id="end-title" style="font-size: 45px;">GAME OVER</h2>
+        <p id="final-score" style="font-size: 24px;"></p>
         <button class="menu-btn" onclick="startGame()">เล่นอีกครั้ง</button>
     </div>
 </div>
@@ -48,36 +49,40 @@
     const statusUi = document.getElementById('status-ui');
 
     let w, h, gameRunning = false, score = 0, hp = 100;
-    let items = [], bubbles = [], effects = [], lastHunger = 0;
-    let player = { x: 0, y: 0, targetX: 0, targetY: 0, size: 1, facing: 1 };
-    let boss = { active: false, x: 0, y: 0, hp: 600, maxHp: 600 };
+    let items = [], effects = [], lastHunger = 0;
+    let player = { x: 0, y: 0, targetX: 0, targetY: 0, facing: 1, speed: 8 };
+    let boss = { active: false, x: 0, y: 0, hp: 600, maxHp: 600, timer: 0 };
+    let keys = {};
 
     function resize() {
-        w = canvas.width = window.innerWidth;
-        h = canvas.height = window.innerHeight;
-        player.x = player.targetX = w / 2;
-        player.y = player.targetY = h / 2;
+        const container = document.getElementById('game-container');
+        w = canvas.width = container.clientWidth;
+        h = canvas.height = container.clientHeight;
+        if(!gameRunning) { player.x = player.targetX = w/2; player.y = player.targetY = h/2; }
     }
     window.addEventListener('resize', resize);
     resize();
 
-    // ระบบควบคุมด้วยการ Touch / Mouse
-    const handleMove = (e) => {
-        if (!gameRunning) return;
-        const touch = e.touches ? e.touches[0] : e;
+    // ระบบควบคุม (เมาส์ + ทัช + คีย์บอร์ด)
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    const updateTarget = (e) => {
         const rect = canvas.getBoundingClientRect();
-        player.targetX = touch.clientX - rect.left;
-        player.targetY = touch.clientY - rect.top;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        player.targetX = clientX - rect.left;
+        player.targetY = clientY - rect.top;
     };
-    canvas.addEventListener('mousemove', handleMove);
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); }, { passive: false });
+    canvas.addEventListener('mousemove', updateTarget);
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); updateTarget(e); }, { passive: false });
 
     function startGame() {
         document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
         gameRunning = true; score = 0; hp = 100; items = []; effects = [];
         boss.active = false; boss.hp = 600; bossUi.style.display = 'none';
         lastHunger = Date.now();
-        animate();
+        requestAnimationFrame(animate);
     }
 
     function drawFish(x, y, color, scale, facing) {
@@ -85,75 +90,95 @@
         ctx.translate(x, y);
         if (facing < 0) ctx.scale(-1, 1);
         ctx.fillStyle = color;
-        ctx.beginPath(); ctx.ellipse(0, 0, 25*scale, 15*scale, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0, 0, 25*scale, 16*scale, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.moveTo(-20*scale, 0); ctx.lineTo(-35*scale, -12*scale); ctx.lineTo(-35*scale, 12*scale); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(12*scale, -5*scale, 4*scale, 0, Math.PI*2); ctx.fill();
         ctx.restore();
     }
 
     function drawBoss() {
         if (!boss.active) return;
-        ctx.fillStyle = '#b71c1c';
-        ctx.beginPath(); ctx.ellipse(boss.x, boss.y, 60, 40, 0, 0, Math.PI*2); ctx.fill();
-        // วาดขา 6 ข้างแบบง่ายสำหรับมือถือ
-        ctx.strokeStyle = '#b71c1c'; ctx.lineWidth = 5;
+        ctx.save();
+        // ขา 6 ข้าง
+        ctx.strokeStyle = '#b71c1c'; ctx.lineWidth = 6;
         for(let i=0; i<3; i++) {
-            let offset = Math.sin(Date.now()*0.01 + i) * 10;
-            ctx.beginPath(); ctx.moveTo(boss.x-40, boss.y+i*10); ctx.lineTo(boss.x-70-offset, boss.y+30+i*10); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(boss.x+40, boss.y+i*10); ctx.lineTo(boss.x+70+offset, boss.y+30+i*10); ctx.stroke();
+            let offset = Math.sin(Date.now()*0.01 + i) * 15;
+            ctx.beginPath(); ctx.moveTo(boss.x-40, boss.y+i*15); ctx.lineTo(boss.x-80-offset, boss.y+40+i*10); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(boss.x+40, boss.y+i*15); ctx.lineTo(boss.x+80+offset, boss.y+40+i*10); ctx.stroke();
         }
+        // ตัวปู
+        ctx.fillStyle = '#d32f2f'; ctx.beginPath(); ctx.ellipse(boss.x, boss.y, 80, 50, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(boss.x-30, boss.y-30, 15, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(boss.x+30, boss.y-30, 15, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
     }
 
     function animate() {
         if (!gameRunning) return;
         ctx.clearRect(0, 0, w, h);
 
-        // ย้ายตัวปลาตามเป้าหมาย
+        // ระบบคีย์บอร์ด
+        if(keys['ArrowLeft']) player.targetX -= player.speed;
+        if(keys['ArrowRight']) player.targetX += player.speed;
+        if(keys['ArrowUp']) player.targetY -= player.speed;
+        if(keys['ArrowDown']) player.targetY += player.speed;
+
+        // ข้อจำกัดขอบจอ
+        player.targetX = Math.max(30, Math.min(w-30, player.targetX));
+        player.targetY = Math.max(30, Math.min(h-30, player.targetY));
+
+        // เคลื่อนที่ลื่นไหล
         let dx = player.targetX - player.x;
         let dy = player.targetY - player.y;
-        player.x += dx * 0.1;
-        player.y += dy * 0.1;
-        if (dx !== 0) player.facing = dx > 0 ? 1 : -1;
+        player.x += dx * 0.15;
+        player.y += dy * 0.15;
+        if (Math.abs(dx) > 1) player.facing = dx > 0 ? 1 : -1;
 
-        if (Date.now() - lastHunger > 1000) { hp -= 3; lastHunger = Date.now(); }
+        // หิว
+        if (Date.now() - lastHunger > 1000) { hp -= 4; lastHunger = Date.now(); }
         hpFill.style.width = hp + '%';
-        if (hp <= 0) { gameRunning = false; document.getElementById('game-over').classList.remove('hidden'); }
+        if (hp <= 0) { gameRunning = false; document.getElementById('final-score').innerText = "คะแนน: " + score; document.getElementById('game-over').classList.remove('hidden'); }
 
+        // บอส
         if (score >= 3000 && !boss.active) { boss.active = true; boss.x = w/2; boss.y = h + 100; bossUi.style.display = 'block'; }
         if (boss.active) {
-            if (boss.y > h - 150) boss.y -= 1;
-            boss.x += (player.x - boss.x) * 0.02;
+            if (boss.y > h - 180) boss.y -= 1.5;
+            boss.x += (player.x - boss.x) * 0.03;
             drawBoss();
-            if (Math.hypot(player.x-boss.x, player.y-boss.y) < 80) { hp -= 1; }
+            if (Math.hypot(player.x-boss.x, player.y-boss.y) < 100) { hp -= 0.5; }
         }
 
         drawFish(player.x, player.y, '#ff9800', 1, player.facing);
 
-        if (Math.random() < 0.05) {
+        // ไอเทม (ขยะลดลงเมื่อบอสมา)
+        let rate = boss.active ? 0.04 : 0.07;
+        if (Math.random() < rate) {
             let type = Math.random() < 0.2 ? 'mine' : 'food';
-            if (boss.active && Math.random() < 0.3) type = 'mine';
+            if (boss.active && Math.random() < 0.4) type = 'mine';
             items.push({ x: Math.random()*w, y: -20, type });
         }
 
         items.forEach((item, i) => {
-            item.y += 3;
+            item.y += 4;
             ctx.fillStyle = item.type === 'food' ? '#ffeb3b' : '#333';
-            ctx.beginPath(); ctx.arc(item.x, item.y, 10, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(item.x, item.y, item.type === 'food' ? 8 : 15, 0, Math.PI*2); ctx.fill();
+            if(item.type === 'mine') { ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(item.x, item.y, 5, 0, Math.PI*2); ctx.fill(); }
 
             let d = Math.hypot(player.x - item.x, player.y - item.y);
-            if (d < 30) {
-                if (item.type === 'food') { score += 10; hp = Math.min(100, hp + 5); }
-                else { hp -= 20; }
+            if (d < 35) {
+                if (item.type === 'food') { score += 10; hp = Math.min(100, hp + 8); }
+                else { hp -= 30; }
                 items.splice(i, 1);
             }
 
             if (boss.active && item.type === 'mine') {
-                if (Math.hypot(boss.x - item.x, boss.y - item.y) < 70) {
-                    boss.hp -= 50; items.splice(i, 1);
+                if (Math.hypot(boss.x - item.x, boss.y - item.y) < 90) {
+                    boss.hp -= 40; items.splice(i, 1);
                     bossHpFill.style.width = (boss.hp/600*100) + '%';
-                    if (boss.hp <= 0) { score += 5000; gameRunning = false; document.getElementById('end-title').innerText = "ชนะแล้ว!"; document.getElementById('game-over').classList.remove('hidden'); }
+                    if (boss.hp <= 0) { score += 5000; gameRunning = false; document.getElementById('end-title').innerText = "VICTORY!"; document.getElementById('game-over').classList.remove('hidden'); }
                 }
             }
-            if (item.y > h + 20) items.splice(i, 1);
+            if (item.y > h + 50) items.splice(i, 1);
         });
 
         statusUi.innerText = `คะแนน: ${score}`;
