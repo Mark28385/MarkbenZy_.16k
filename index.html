@@ -3,19 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fish Adventure: Fixed Edition - By Chayanan</title>
+    <title>Fish Adventure: Mobile Optimized - By Chayanan</title>
     <style>
         body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #e0f7fa; font-family: 'Tahoma', sans-serif; overflow: hidden; touch-action: none; }
-        #game-container { position: relative; width: 100vw; height: 100vh; max-width: 800px; max-height: 600px; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.3); border: 4px solid #fff; }
+        #game-container { position: relative; width: 100vw; height: 100vh; max-width: 800px; max-height: 600px; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.3); border: 2px solid #fff; }
         canvas { background: linear-gradient(#4fc3f7, #01579b); display: block; width: 100%; height: 100%; }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.85); color: white; z-index: 10; text-align: center; }
+        
+        /* แก้ไขส่วนนี้: ปรับตัวอักษรให้รองรับมือถือ */
+        #status-alert { 
+            position: absolute; 
+            top: 60px; /* ขยับลงมาจากแถบเลือดเล็กน้อย */
+            left: 50%; 
+            transform: translateX(-50%); 
+            color: #ffeb3b; 
+            font-weight: bold; 
+            font-size: 5vw; /* ขนาดแปรผันตามหน้าจอ */
+            max-width: 90%; /* ไม่ให้ชิดขอบจอเกินไป */
+            line-height: 1.2; /* ป้องกันตัวอักษรทับกัน */
+            text-shadow: 2px 2px #000; 
+            z-index: 5; 
+            text-align: center; 
+            pointer-events: none; 
+        }
+
+        @media (min-width: 800px) {
+            #status-alert { font-size: 22px; top: 20px; } /* ขนาดคงที่เมื่อเล่นบนคอม */
+        }
+
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.85); color: white; z-index: 10; text-align: center; padding: 20px; box-sizing: border-box; }
         .hidden { display: none !important; }
-        .menu-btn { padding: 12px 30px; margin: 8px; font-size: 20px; cursor: pointer; border: none; border-radius: 50px; background: #ffeb3b; color: #01579b; font-weight: bold; box-shadow: 0 5px #fbc02d; transition: 0.1s; }
-        .hp-bar-container { position: absolute; top: 20px; right: 20px; width: 150px; height: 25px; background: #333; border-radius: 15px; border: 2px solid white; overflow: hidden; }
+        .menu-btn { padding: 12px 30px; margin: 8px; font-size: 18px; cursor: pointer; border: none; border-radius: 50px; background: #ffeb3b; color: #01579b; font-weight: bold; box-shadow: 0 5px #fbc02d; }
+        
+        .hp-bar-container { position: absolute; top: 15px; right: 15px; width: 120px; height: 20px; background: #333; border-radius: 15px; border: 2px solid white; overflow: hidden; z-index: 6; }
         #hp-fill { width: 100%; height: 100%; background: #4caf50; transition: 0.1s; }
-        #status-alert { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #ffeb3b; font-weight: bold; font-size: 22px; text-shadow: 2px 2px #000; z-index: 5; text-align: center; width: 100%; pointer-events: none; }
-        #score-display { position: absolute; top: 20px; left: 20px; color: white; font-weight: bold; font-size: 24px; text-shadow: 2px 2px #0277bd; }
-        #boss-ui { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); width: 80%; height: 15px; background: #333; border: 2px solid white; border-radius: 10px; display: none; }
+        #score-display { position: absolute; top: 15px; left: 15px; color: white; font-weight: bold; font-size: 20px; text-shadow: 2px 2px #0277bd; z-index: 6; }
+        
+        #boss-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; height: 12px; background: #333; border: 2px solid white; border-radius: 10px; display: none; }
         #boss-hp-fill { width: 100%; height: 100%; background: #ff1744; }
     </style>
 </head>
@@ -26,24 +49,24 @@
     <div id="score-display">แต้ม: 0</div>
     <div id="status-alert">สะสมอาหารเพื่อเริ่มเกม!</div>
     <div class="hp-bar-container"><div id="hp-fill"></div></div>
-    <div id="boss-ui"><div id="boss-hp-fill"></div><p style="margin: -25px 0 0 0; font-size: 10px; font-weight: bold; color:white; text-align: center;">BOSS: ULTRA MEGA CRAB (5000 HP)</p></div>
+    <div id="boss-ui"><div id="boss-hp-fill"></div></div>
 
     <div id="main-menu" class="overlay">
-        <h1>FISH ADVENTURE</h1>
-        <p>สะสมแต้มถึง 5,000 เพื่อสู้บอสปูยักษ์!</p>
+        <h1 style="font-size: 8vw;">FISH ADVENTURE</h1>
+        <p style="font-size: 4vw;">สะสมแต้มถึง 5,000 เพื่อสู้บอส!</p>
         <button class="menu-btn" onclick="startGame()">เริ่มเกม</button>
         <button class="menu-btn" onclick="showCredits()">ผู้จัดทำ</button>
     </div>
 
     <div id="credits-menu" class="overlay hidden">
         <h2>ข้อมูลผู้จัดทำ</h2>
-        <p><strong>ด.ช.ชญานันต์ เดชวงษา</strong> ม.2/4 เลขที่ 1</p>
+        <p>ด.ช.ชญานันต์ เดชวงษา ม.2/4 เลขที่ 1</p>
         <button class="menu-btn" onclick="showMainMenu()">กลับหน้าหลัก</button>
     </div>
 
     <div id="game-over" class="overlay hidden">
-        <h2 style="font-size: 40px; color: #ff5252;">GAME OVER</h2>
-        <p id="final-score" style="font-size: 24px; margin-bottom: 20px;"></p>
+        <h2 style="font-size: 32px; color: #ff5252;">GAME OVER</h2>
+        <p id="final-score" style="font-size: 20px; margin-bottom: 20px;"></p>
         <button class="menu-btn" onclick="startGame()">เล่นใหม่อีกครั้ง</button>
         <button class="menu-btn" onclick="showMainMenu()">กลับสู่เมนูหลัก</button>
     </div>
@@ -65,15 +88,17 @@
     const boss = { active: false, x: 400, y: 800, hp: 5000, maxHp: 5000, slowTimer: 0 };
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSound(freq, type, duration, vol=0.1) {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    function playSound(freq, type, duration, vol=0.05) {
+        try {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
     }
 
     const updateInput = (e) => {
@@ -85,7 +110,7 @@
     };
     canvas.addEventListener('mousemove', updateInput);
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); updateInput(e); }, { passive: false });
-    canvas.addEventListener('mousedown', updateInput);
+    canvas.addEventListener('touchstart', (e) => { updateInput(e); });
 
     function startGame() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -106,7 +131,7 @@
     function updateHPUI() {
         hpFill.style.width = hp + '%';
         hpFill.style.background = poisonTimer > 0 ? "#ea80fc" : (hp > 60 ? '#4caf50' : (hp > 30 ? '#ffeb3b' : '#ff5252'));
-        if (hp <= 0 && gameRunning) { playSound(100, 'sawtooth', 0.5); gameOver(); }
+        if (hp <= 0 && gameRunning) { gameOver(); }
     }
 
     function gameOver() { gameRunning = false; document.getElementById('game-over').classList.remove('hidden'); document.getElementById('final-score').innerText = `แต้มของคุณคือ: ${score}`; }
@@ -151,7 +176,6 @@
         if (!boss.active) return;
         ctx.save();
         if (boss.slowTimer > 0) ctx.filter = 'hue-rotate(180deg) brightness(1.2)';
-        
         ctx.strokeStyle = '#b71c1c'; ctx.lineWidth = 15;
         for(let i=0; i<3; i++) {
             let legMove = Math.sin(Date.now() * 0.01 + i) * 25;
@@ -160,26 +184,9 @@
                 ctx.lineTo(boss.x + (side * 240) + legMove, boss.y + 120 + (i * 25)); ctx.stroke();
             });
         }
-
-        let armSwing = Math.sin(Date.now() * 0.003) * 0.5;
-        let pincerOpen = Math.abs(Math.sin(Date.now() * 0.005)) * 0.7;
-        [-1, 1].forEach(side => {
-            ctx.save(); ctx.translate(boss.x + (side * 140), boss.y - 20); ctx.scale(side, 1); ctx.rotate(armSwing);
-            ctx.strokeStyle = '#b71c1c'; ctx.lineWidth = 25; ctx.beginPath(); ctx.moveTo(0, 0); 
-            ctx.quadraticCurveTo(80, -80, 160, -140); ctx.stroke();
-            ctx.save(); ctx.translate(160, -140); ctx.rotate(-pincerOpen);
-            ctx.fillStyle = '#d32f2f'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(60, -100, 140, -60); ctx.quadraticCurveTo(80, 0, 0, 0); ctx.fill(); ctx.restore();
-            ctx.save(); ctx.translate(160, -140); ctx.rotate(pincerOpen * 0.8);
-            ctx.fillStyle = '#b71c1c'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(60, 80, 120, 20); ctx.quadraticCurveTo(60, 0, 0, 0); ctx.fill(); ctx.restore();
-            ctx.restore();
-        });
-
-        // บอดี้บอส
         ctx.fillStyle = '#b71c1c'; ctx.beginPath(); ctx.ellipse(boss.x, boss.y, 220, 140, 0, 0, Math.PI * 2); ctx.fill();
-        // ตาข้างซ้าย
         ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(boss.x-80, boss.y-70, 40, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(boss.x-80, boss.y-80, 18, 0, Math.PI*2); ctx.fill();
-        // ตาข้างขวา (แก้ตาหาย)
         ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(boss.x+80, boss.y-70, 40, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(boss.x+80, boss.y-80, 18, 0, Math.PI*2); ctx.fill();
         ctx.restore();
@@ -197,88 +204,74 @@
         player.facing = (player.targetX - player.x) > 0 ? 1 : -1;
 
         if (Math.random() < 0.1) bubbles.push({x: Math.random()*800, y: 610, s: Math.random()*5+2, sp: Math.random()*2+1});
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         bubbles.forEach((b, i) => { ctx.beginPath(); ctx.arc(b.x, b.y, b.s, 0, Math.PI*2); ctx.fill(); b.y -= b.sp; if(b.y < -10) bubbles.splice(i, 1); });
 
-        // --- ระบบแจ้งเตือนตามแต้มที่กำหนด (เป๊ะๆ) ---
+        // --- ระบบแจ้งเตือน (Mobile Optimized) ---
         if (boss.active) {
-            statusAlert.innerText = boss.slowTimer > 0 ? "⚡ บอสติดสตั๊น! โจมตีเลย!" : "🦀 ULTRA MEGA CRAB: ระวังก้ามยักษ์!";
-            statusAlert.style.color = boss.slowTimer > 0 ? "#00e5ff" : "#ff1744";
+            statusAlert.innerText = boss.slowTimer > 0 ? "⚡ บอสสตั๊น! โจมตี!" : "🦀 ระวังก้ามปูยักษ์!";
+            statusAlert.style.color = "#ff1744";
         } else if (score >= 2000) {
-            statusAlert.innerText = "👾 ระวังแมงกะพรุนพิษร้ายแรง!";
+            statusAlert.innerText = "👾 ระวังแมงกะพรุนพิษ!";
             statusAlert.style.color = "#ea80fc";
         } else if (score >= 1000) {
             statusAlert.innerText = "💣 ระวังทุ่นระเบิดยักษ์!";
             statusAlert.style.color = "#ff5252";
         } else if (score >= 500) {
-            statusAlert.innerText = "⚠️ ระวังทุ่นระเบิดเล็กและขยะ!";
+            statusAlert.innerText = "⚠️ ระวังระเบิดและขยะ!";
             statusAlert.style.color = "white";
         } else {
-            statusAlert.innerText = "สะสมอาหาร (ต้นเกมอาหารหายากหน่อยนะ!)";
+            statusAlert.innerText = "สะสมอาหาร";
             statusAlert.style.color = "#ffeb3b";
         }
 
-        // --- ระบบสุ่มไอเทมตามแต้ม ---
-        let baseSpawnChance = (score < 500) ? 0.06 : (score >= 3000 ? 0.18 : 0.12);
-        if (Math.random() < baseSpawnChance) {
+        // --- ระบบสุ่มไอเทม ---
+        if (Math.random() < 0.12) {
             let r = Math.random(); let type = 'food';
-            if (r < 0.25) type = 'trash';
-            else if (r < 0.35) type = 'worm';
-            else if (r < 0.45) type = 'small_fish';
-            else if (r < 0.7) {
-                let r2 = Math.random();
-                if (boss.active) {
-                    if (r2 < 0.4) type = 'mine'; else if (r2 < 0.7) type = 'big_mine'; else type = 'jellyfish';
-                } else {
-                    if (score >= 2000) { // แต้ม 2000 เริ่มมีแมงกะพรุน
-                        type = (r2 < 0.4) ? 'jellyfish' : (r2 < 0.7 ? 'big_mine' : 'mine');
-                    } else if (score >= 1000) { // แต้ม 1000 เริ่มมีระเบิดยักษ์
-                        type = (r2 < 0.6) ? 'big_mine' : 'mine';
-                    } else if (score >= 500) { // แต้ม 500 มีระเบิดเล็ก
-                        type = 'mine';
-                    } else type = 'trash';
-                }
-            } else type = 'food';
+            if (r < 0.2) type = 'trash';
+            else if (r < 0.3) type = 'worm';
+            else if (r < 0.65) {
+                if (score >= 2000) type = Math.random() < 0.4 ? 'jellyfish' : 'big_mine';
+                else if (score >= 1000) type = 'big_mine';
+                else if (score >= 500) type = 'mine';
+                else type = 'trash';
+            }
             items.push({ x: Math.random()*740+30, y: -50, type, speed: (Math.random()*2+3) });
         }
 
         if (boss.slowTimer > 0) boss.slowTimer--;
-        if (score >= 5000 && !boss.active && !bossDefeated) { boss.active = true; bossUi.style.display = 'block'; playSound(150, 'square', 0.8); }
+        if (score >= 5000 && !boss.active && !bossDefeated) { boss.active = true; bossUi.style.display = 'block'; }
 
         for (let i = items.length - 1; i >= 0; i--) {
             let item = items[i]; item.y += item.speed;
-            
             if (item.type === 'food') { ctx.fillStyle = '#ffeb3b'; ctx.beginPath(); ctx.arc(item.x, item.y, 8, 0, Math.PI*2); ctx.fill(); }
             else if (item.type === 'worm') { ctx.fillStyle = '#ff80ab'; ctx.fillRect(item.x-15, item.y-5, 30, 10); }
             else if (item.type === 'trash') { ctx.fillStyle = '#9e9e9e'; ctx.fillRect(item.x-12, item.y-12, 24, 24); }
             else if (item.type === 'mine') { drawMine(item.x, item.y, 15, false); }
             else if (item.type === 'big_mine') { drawMine(item.x, item.y, 30, true); }
             else if (item.type === 'jellyfish') { drawJellyfish(item.x, item.y); }
-            else if (item.type === 'small_fish') { drawFish(item.x, item.y, '#00e5ff', 0.6, 1); }
 
             let d = Math.sqrt((player.x - item.x)**2 + (player.y - item.y)**2);
             if (d < 40) {
                 if (item.type === 'food') { score += 10; hp = Math.min(100, hp + 5); playSound(600, 'sine', 0.1); }
                 else if (item.type === 'worm') { score += 25; hp = Math.min(100, hp + 20); playSound(800, 'sine', 0.15); }
                 else if (item.type === 'trash') { hp -= 15; playSound(200, 'sawtooth', 0.2); }
-                else if (item.type === 'mine') { hp -= 35; effects.push({x: item.x, y: item.y, r: 10, opacity: 1}); playSound(100, 'sawtooth', 0.3); }
-                else if (item.type === 'big_mine') { hp -= 60; effects.push({x: item.x, y: item.y, r: 15, opacity: 1}); playSound(80, 'sawtooth', 0.4); }
-                else if (item.type === 'jellyfish') { poisonTimer = 250; playSound(400, 'triangle', 0.5); }
-                else if (item.type === 'small_fish') { score += 100; hp = Math.min(100, hp + 45); playSound(1000, 'sine', 0.2); }
+                else if (item.type === 'mine' || item.type === 'big_mine') { 
+                    hp -= (item.type === 'mine' ? 35 : 60); 
+                    effects.push({x: item.x, y: item.y, r: 20, opacity: 1});
+                }
+                else if (item.type === 'jellyfish') { poisonTimer = 200; }
                 items.splice(i, 1); scoreDisplay.innerText = `แต้ม: ${score}`; updateHPUI(); continue;
             }
 
-            // บอสโดนสตั้น (แก้ไขระยะเช็ก)
             if (boss.active && (item.type === 'mine' || item.type === 'big_mine')) {
-                let distToBoss = Math.sqrt((boss.x - item.x)**2 + (boss.y - item.y)**2);
-                if (distToBoss < 200) {
+                if (Math.sqrt((boss.x - item.x)**2 + (boss.y - item.y)**2) < 180) {
                     boss.hp -= (item.type === 'big_mine' ? 300 : 120);
-                    boss.slowTimer = (item.type === 'big_mine' ? 180 : 90);
-                    effects.push({x: item.x, y: item.y, r: 60, opacity: 1});
-                    playSound(50, 'sawtooth', 0.5, 0.3);
+                    boss.slowTimer = 150;
+                    effects.push({x: item.x, y: item.y, r: 50, opacity: 1});
                     bossHpFill.style.width = (boss.hp / 5000 * 100) + '%';
                     items.splice(i, 1);
-                    if (boss.hp <= 0) { score += 50000; boss.active = false; bossDefeated = true; bossUi.style.display='none'; playSound(200, 'square', 1.5); }
+                    if (boss.hp <= 0) { score += 10000; boss.active = false; bossDefeated = true; bossUi.style.display='none'; }
                 }
             }
             if (item.y > 650) items.splice(i, 1);
@@ -286,17 +279,17 @@
 
         drawFish(player.x, player.y, '#ff9800', 1, player.facing);
         if (boss.active) {
-            let currentSpeed = (boss.slowTimer > 0) ? 0.005 : 0.025;
+            let currentSpeed = (boss.slowTimer > 0) ? 0.005 : 0.02;
             boss.x += (player.x - boss.x) * currentSpeed; 
             if (boss.y > 450) boss.y -= 0.5;
-            if (Math.sqrt((boss.x-player.x)**2+(boss.y-player.y)**2) < 320) { hp -= 0.8; updateHPUI(); }
+            if (Math.sqrt((boss.x-player.x)**2+(boss.y-player.y)**2) < 200) { hp -= 0.5; updateHPUI(); }
             drawBoss();
         }
 
         effects.forEach((eff, i) => {
             ctx.beginPath(); ctx.strokeStyle = `rgba(255,100,0,${eff.opacity})`; ctx.lineWidth=4;
             ctx.arc(eff.x, eff.y, eff.r, 0, Math.PI*2); ctx.stroke();
-            eff.r += 6; eff.opacity -= 0.05; if (eff.opacity <= 0) effects.splice(i, 1);
+            eff.r += 4; eff.opacity -= 0.05; if (eff.opacity <= 0) effects.splice(i, 1);
         });
         requestAnimationFrame(animate);
     }
