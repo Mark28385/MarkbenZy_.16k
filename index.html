@@ -3,31 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fish Adventure: Mobile Optimized - By Chayanan</title>
+    <title>Fish Adventure: Big Mine Stun Only - By Chayanan</title>
     <style>
         body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #e0f7fa; font-family: 'Tahoma', sans-serif; overflow: hidden; touch-action: none; }
         #game-container { position: relative; width: 100vw; height: 100vh; max-width: 800px; max-height: 600px; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.3); border: 2px solid #fff; }
         canvas { background: linear-gradient(#4fc3f7, #01579b); display: block; width: 100%; height: 100%; }
         
-        /* แก้ไขส่วนนี้: ปรับตัวอักษรให้รองรับมือถือ */
         #status-alert { 
-            position: absolute; 
-            top: 60px; /* ขยับลงมาจากแถบเลือดเล็กน้อย */
-            left: 50%; 
-            transform: translateX(-50%); 
-            color: #ffeb3b; 
-            font-weight: bold; 
-            font-size: 5vw; /* ขนาดแปรผันตามหน้าจอ */
-            max-width: 90%; /* ไม่ให้ชิดขอบจอเกินไป */
-            line-height: 1.2; /* ป้องกันตัวอักษรทับกัน */
-            text-shadow: 2px 2px #000; 
-            z-index: 5; 
-            text-align: center; 
-            pointer-events: none; 
+            position: absolute; left: 50%; transform: translateX(-50%); 
+            color: #ffeb3b; font-weight: bold; text-shadow: 2px 2px #000; 
+            z-index: 5; text-align: center; pointer-events: none; width: 90%; line-height: 1.2;
         }
 
+        @media (max-width: 799px) {
+            #status-alert { top: 55px; font-size: 18px; }
+            #score-display { font-size: 18px !important; }
+        }
         @media (min-width: 800px) {
-            #status-alert { font-size: 22px; top: 20px; } /* ขนาดคงที่เมื่อเล่นบนคอม */
+            #status-alert { top: 20px; font-size: 24px; }
         }
 
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.85); color: white; z-index: 10; text-align: center; padding: 20px; box-sizing: border-box; }
@@ -36,7 +29,7 @@
         
         .hp-bar-container { position: absolute; top: 15px; right: 15px; width: 120px; height: 20px; background: #333; border-radius: 15px; border: 2px solid white; overflow: hidden; z-index: 6; }
         #hp-fill { width: 100%; height: 100%; background: #4caf50; transition: 0.1s; }
-        #score-display { position: absolute; top: 15px; left: 15px; color: white; font-weight: bold; font-size: 20px; text-shadow: 2px 2px #0277bd; z-index: 6; }
+        #score-display { position: absolute; top: 15px; left: 15px; color: white; font-weight: bold; font-size: 24px; text-shadow: 2px 2px #0277bd; z-index: 6; }
         
         #boss-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; height: 12px; background: #333; border: 2px solid white; border-radius: 10px; display: none; }
         #boss-hp-fill { width: 100%; height: 100%; background: #ff1744; }
@@ -47,13 +40,13 @@
 <div id="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="score-display">แต้ม: 0</div>
-    <div id="status-alert">สะสมอาหารเพื่อเริ่มเกม!</div>
+    <div id="status-alert">สะสมอาหารให้ครบ 5,000!</div>
     <div class="hp-bar-container"><div id="hp-fill"></div></div>
     <div id="boss-ui"><div id="boss-hp-fill"></div></div>
 
     <div id="main-menu" class="overlay">
-        <h1 style="font-size: 8vw;">FISH ADVENTURE</h1>
-        <p style="font-size: 4vw;">สะสมแต้มถึง 5,000 เพื่อสู้บอส!</p>
+        <h1>FISH ADVENTURE</h1>
+        <p>สะสมแต้มถึง 5,000 เพื่อสู้บอส!</p>
         <button class="menu-btn" onclick="startGame()">เริ่มเกม</button>
         <button class="menu-btn" onclick="showCredits()">ผู้จัดทำ</button>
     </div>
@@ -85,38 +78,46 @@
     let poisonTimer = 0, bossDefeated = false;
     
     const player = { x: 400, y: 300, targetX: 400, targetY: 300, facing: 1 };
-    const boss = { active: false, x: 400, y: 800, hp: 5000, maxHp: 5000, slowTimer: 0 };
+    
+    // ปรับเลือดบอสเป็น 10000
+    const boss = { 
+        active: false, x: 400, y: 800, hp: 10000, maxHp: 10000, 
+        slowTimer: 0, mineCount: 0 
+    };
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSound(freq, type, duration, vol=0.05) {
-        try {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + duration);
-        } catch(e) {}
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    function playSound(freq, type, duration, vol=0.08) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
     }
 
     const updateInput = (e) => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         const rect = canvas.getBoundingClientRect();
         const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
         const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
         player.targetX = (clientX - rect.left) * (canvas.width / rect.width);
         player.targetY = (clientY - rect.top) * (canvas.height / rect.height);
     };
+    
     canvas.addEventListener('mousemove', updateInput);
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); updateInput(e); }, { passive: false });
-    canvas.addEventListener('touchstart', (e) => { updateInput(e); });
+    canvas.addEventListener('mousedown', updateInput);
 
     function startGame() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
         gameRunning = true; score = 0; hp = 100; items = []; effects = []; poisonTimer = 0;
-        boss.active = false; boss.hp = 5000; boss.y = 800; bossDefeated = false; boss.slowTimer = 0;
+        boss.active = false; boss.hp = 10000; boss.y = 800; bossDefeated = false; 
+        boss.slowTimer = 0; boss.mineCount = 0;
         bossUi.style.display = 'none';
         player.x = 400; player.y = 300;
         lastHungerUpdate = Date.now();
@@ -125,8 +126,8 @@
         requestAnimationFrame(animate);
     }
 
-    function showCredits() { document.getElementById('main-menu').classList.add('hidden'); document.getElementById('credits-menu').classList.remove('hidden'); }
     function showMainMenu() { document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('main-menu').classList.remove('hidden'); gameRunning = false; }
+    function showCredits() { document.getElementById('main-menu').classList.add('hidden'); document.getElementById('credits-menu').classList.remove('hidden'); }
 
     function updateHPUI() {
         hpFill.style.width = hp + '%';
@@ -175,20 +176,40 @@
     function drawBoss() {
         if (!boss.active) return;
         ctx.save();
-        if (boss.slowTimer > 0) ctx.filter = 'hue-rotate(180deg) brightness(1.2)';
+        if (boss.slowTimer > 0) ctx.filter = 'hue-rotate(180deg) brightness(1.2) grayscale(0.5)';
+        
         ctx.strokeStyle = '#b71c1c'; ctx.lineWidth = 15;
         for(let i=0; i<3; i++) {
-            let legMove = Math.sin(Date.now() * 0.01 + i) * 25;
+            let legMove = (boss.slowTimer > 0) ? 0 : Math.sin(Date.now() * 0.01 + i) * 25;
             [-1, 1].forEach(side => {
                 ctx.beginPath(); ctx.moveTo(boss.x + (side * 120), boss.y + 40 + (i * 25));
                 ctx.lineTo(boss.x + (side * 240) + legMove, boss.y + 120 + (i * 25)); ctx.stroke();
             });
         }
+
+        let armSwing = (boss.slowTimer > 0) ? 0.3 : Math.sin(Date.now() * 0.003) * 0.5;
+        let pincerOpen = (boss.slowTimer > 0) ? 0.2 : Math.abs(Math.sin(Date.now() * 0.005)) * 0.7;
+        [-1, 1].forEach(side => {
+            ctx.save(); ctx.translate(boss.x + (side * 140), boss.y - 20); ctx.scale(side, 1); ctx.rotate(armSwing);
+            ctx.strokeStyle = '#b71c1c'; ctx.lineWidth = 25; ctx.beginPath(); ctx.moveTo(0, 0); 
+            ctx.quadraticCurveTo(80, -80, 160, -140); ctx.stroke();
+            ctx.save(); ctx.translate(160, -140); ctx.rotate(-pincerOpen);
+            ctx.fillStyle = '#d32f2f'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(60, -100, 140, -60); ctx.quadraticCurveTo(80, 0, 0, 0); ctx.fill(); ctx.restore();
+            ctx.save(); ctx.translate(160, -140); ctx.rotate(pincerOpen * 0.8);
+            ctx.fillStyle = '#b71c1c'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(60, 80, 120, 20); ctx.quadraticCurveTo(60, 0, 0, 0); ctx.fill(); ctx.restore();
+            ctx.restore();
+        });
+
         ctx.fillStyle = '#b71c1c'; ctx.beginPath(); ctx.ellipse(boss.x, boss.y, 220, 140, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(boss.x-80, boss.y-70, 40, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(boss.x-80, boss.y-80, 18, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(boss.x+80, boss.y-70, 40, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(boss.x+80, boss.y-80, 18, 0, Math.PI*2); ctx.fill();
+        
+        if (boss.slowTimer <= 0) {
+            ctx.fillStyle = "white"; ctx.font = "bold 20px Tahoma"; ctx.textAlign = "center";
+            ctx.fillText(`สะสมระเบิดยักษ์: ${boss.mineCount}/3`, boss.x, boss.y - 160);
+        }
         ctx.restore();
     }
 
@@ -207,10 +228,9 @@
         ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         bubbles.forEach((b, i) => { ctx.beginPath(); ctx.arc(b.x, b.y, b.s, 0, Math.PI*2); ctx.fill(); b.y -= b.sp; if(b.y < -10) bubbles.splice(i, 1); });
 
-        // --- ระบบแจ้งเตือน (Mobile Optimized) ---
         if (boss.active) {
-            statusAlert.innerText = boss.slowTimer > 0 ? "⚡ บอสสตั๊น! โจมตี!" : "🦀 ระวังก้ามปูยักษ์!";
-            statusAlert.style.color = "#ff1744";
+            statusAlert.innerText = boss.slowTimer > 0 ? "⚡ สตั๊นด้วยคอมโบระเบิดยักษ์!" : `🦀 ล่อบอสโดนระเบิดยักษ์ครบ 3 ลูก! (${boss.mineCount}/3)`;
+            statusAlert.style.color = boss.slowTimer > 0 ? "#00e5ff" : "#ff1744";
         } else if (score >= 2000) {
             statusAlert.innerText = "👾 ระวังแมงกะพรุนพิษ!";
             statusAlert.style.color = "#ea80fc";
@@ -218,23 +238,27 @@
             statusAlert.innerText = "💣 ระวังทุ่นระเบิดยักษ์!";
             statusAlert.style.color = "#ff5252";
         } else if (score >= 500) {
-            statusAlert.innerText = "⚠️ ระวังระเบิดและขยะ!";
-            statusAlert.style.color = "white";
+            statusAlert.innerText = "⚠️ ระวังทุ่นระเบิดเล็กและขยะ!";
+            statusAlert.style.color = "#ffffff";
         } else {
-            statusAlert.innerText = "สะสมอาหาร";
+            statusAlert.innerText = "สะสมอาหารเพื่อไปสู้บอส!";
             statusAlert.style.color = "#ffeb3b";
         }
 
-        // --- ระบบสุ่มไอเทม ---
         if (Math.random() < 0.12) {
             let r = Math.random(); let type = 'food';
             if (r < 0.2) type = 'trash';
             else if (r < 0.3) type = 'worm';
-            else if (r < 0.65) {
-                if (score >= 2000) type = Math.random() < 0.4 ? 'jellyfish' : 'big_mine';
-                else if (score >= 1000) type = 'big_mine';
-                else if (score >= 500) type = 'mine';
-                else type = 'trash';
+            else if (r < 0.4) type = 'small_fish';
+            else if (r < 0.7) {
+                if (score >= 2000) {
+                    let rand = Math.random();
+                    if (rand < 0.35) type = 'jellyfish';
+                    else if (rand < 0.7) type = 'big_mine';
+                    else type = 'mine';
+                } else if (score >= 1000) { type = Math.random() < 0.6 ? 'big_mine' : 'mine';
+                } else if (score >= 500) { type = 'mine';
+                } else type = 'trash';
             }
             items.push({ x: Math.random()*740+30, y: -50, type, speed: (Math.random()*2+3) });
         }
@@ -250,26 +274,33 @@
             else if (item.type === 'mine') { drawMine(item.x, item.y, 15, false); }
             else if (item.type === 'big_mine') { drawMine(item.x, item.y, 30, true); }
             else if (item.type === 'jellyfish') { drawJellyfish(item.x, item.y); }
+            else if (item.type === 'small_fish') { drawFish(item.x, item.y, '#00e5ff', 0.6, 1); }
 
             let d = Math.sqrt((player.x - item.x)**2 + (player.y - item.y)**2);
             if (d < 40) {
                 if (item.type === 'food') { score += 10; hp = Math.min(100, hp + 5); playSound(600, 'sine', 0.1); }
                 else if (item.type === 'worm') { score += 25; hp = Math.min(100, hp + 20); playSound(800, 'sine', 0.15); }
+                else if (item.type === 'small_fish') { score += 100; hp = Math.min(100, hp + 45); playSound(1100, 'sine', 0.2); }
                 else if (item.type === 'trash') { hp -= 15; playSound(200, 'sawtooth', 0.2); }
-                else if (item.type === 'mine' || item.type === 'big_mine') { 
-                    hp -= (item.type === 'mine' ? 35 : 60); 
-                    effects.push({x: item.x, y: item.y, r: 20, opacity: 1});
-                }
-                else if (item.type === 'jellyfish') { poisonTimer = 200; }
+                else if (item.type === 'mine') { hp -= 35; effects.push({x: item.x, y: item.y, r: 20, opacity: 1}); playSound(100, 'sawtooth', 0.3); }
+                else if (item.type === 'big_mine') { hp -= 60; effects.push({x: item.x, y: item.y, r: 40, opacity: 1}); playSound(80, 'sawtooth', 0.4); }
+                else if (item.type === 'jellyfish') { poisonTimer = 200; playSound(400, 'triangle', 0.4); }
                 items.splice(i, 1); scoreDisplay.innerText = `แต้ม: ${score}`; updateHPUI(); continue;
             }
 
             if (boss.active && (item.type === 'mine' || item.type === 'big_mine')) {
-                if (Math.sqrt((boss.x - item.x)**2 + (boss.y - item.y)**2) < 180) {
-                    boss.hp -= (item.type === 'big_mine' ? 300 : 120);
-                    boss.slowTimer = 150;
-                    effects.push({x: item.x, y: item.y, r: 50, opacity: 1});
-                    bossHpFill.style.width = (boss.hp / 5000 * 100) + '%';
+                if (Math.sqrt((boss.x - item.x)**2 + (boss.y - item.y)**2) < 200) {
+                    boss.hp -= (item.type === 'big_mine' ? 350 : 120);
+                    
+                    // ปรับเงื่อนไขสตั๊น: ต้องเป็นระเบิดยักษ์ (big_mine) เท่านั้น
+                    if (boss.slowTimer <= 0 && item.type === 'big_mine') {
+                        boss.mineCount++;
+                        if (boss.mineCount >= 3) { boss.slowTimer = 180; boss.mineCount = 0; }
+                    }
+                    
+                    effects.push({x: item.x, y: item.y, r: 60, opacity: 1});
+                    playSound(60, 'sawtooth', 0.5, 0.2);
+                    bossHpFill.style.width = (boss.hp / 10000 * 100) + '%';
                     items.splice(i, 1);
                     if (boss.hp <= 0) { score += 10000; boss.active = false; bossDefeated = true; bossUi.style.display='none'; }
                 }
@@ -279,10 +310,25 @@
 
         drawFish(player.x, player.y, '#ff9800', 1, player.facing);
         if (boss.active) {
-            let currentSpeed = (boss.slowTimer > 0) ? 0.005 : 0.02;
-            boss.x += (player.x - boss.x) * currentSpeed; 
-            if (boss.y > 450) boss.y -= 0.5;
-            if (Math.sqrt((boss.x-player.x)**2+(boss.y-player.y)**2) < 200) { hp -= 0.5; updateHPUI(); }
+            if (boss.slowTimer > 0) {
+                let dx = boss.x - player.x;
+                let dy = boss.y - player.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let knockSpeed = 1.2; 
+                boss.x += (dx / dist) * knockSpeed;
+                boss.y += (dy / dist) * knockSpeed;
+                if (boss.x < 50) boss.x = 50; if (boss.x > 750) boss.x = 750;
+                if (boss.y < 50) boss.y = 50; if (boss.y > 550) boss.y = 550;
+            } else {
+                let followSpeed = 0.001; 
+                boss.x += (player.x - boss.x) * followSpeed; 
+                boss.y += (player.y - 180 - boss.y) * followSpeed;
+                if (boss.y < 50) boss.y = 50;
+            }
+            
+            if (Math.sqrt((boss.x-player.x)**2+(boss.y-player.y)**2) < 220 && boss.slowTimer <= 0) { 
+                hp -= 0.7; updateHPUI(); 
+            }
             drawBoss();
         }
 
