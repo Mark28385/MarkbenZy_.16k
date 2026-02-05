@@ -3,41 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fish Adventure: Mobile Fixed & Bubbles - By Chayanan</title>
+    <title>Fish Adventure: Full Fixed - By Chayanan</title>
     <style>
         body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #01579b; font-family: 'Tahoma', sans-serif; overflow: hidden; touch-action: none; }
         #game-container { position: relative; width: 100vw; height: 100vh; max-width: 800px; max-height: 600px; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.5); border: 2px solid #fff; }
         canvas { background: linear-gradient(#4fc3f7, #01579b); display: block; width: 100%; height: 100%; }
         
-        /* ปรับปรุง UI ใหม่ทั้งหมดเพื่อกันการทับกัน */
         .ui-top-bar {
             position: absolute; top: 0; left: 0; width: 100%; height: 50px;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 10px; box-sizing: border-box; pointer-events: none; z-index: 6;
+            padding: 0 15px; box-sizing: border-box; pointer-events: none; z-index: 6;
         }
 
-        #score-display { color: white; font-weight: bold; font-size: 20px; text-shadow: 2px 2px #000; }
-        
-        .hp-bar-container { width: 100px; height: 18px; background: #333; border: 2px solid white; border-radius: 10px; overflow: hidden; }
+        #score-display { color: white; font-weight: bold; font-size: 22px; text-shadow: 2px 2px #000; }
+        .hp-bar-container { width: 120px; height: 20px; background: #333; border: 2px solid white; border-radius: 10px; overflow: hidden; }
         #hp-fill { width: 100%; height: 100%; background: #4caf50; transition: 0.1s; }
 
         #status-alert { 
             position: absolute; top: 60px; left: 50%; transform: translateX(-50%); 
             color: #ffeb3b; font-weight: bold; text-shadow: 2px 2px #000; 
             z-index: 5; text-align: center; pointer-events: none; 
-            width: 90%; font-size: 18px; line-height: 1.1;
-        }
-
-        /* สำหรับมือถือที่หน้าจอเล็กมาก */
-        @media (max-width: 400px) {
-            #score-display { font-size: 16px; }
-            #status-alert { font-size: 14px; top: 55px; }
-            .hp-bar-container { width: 70px; }
+            width: 90%; font-size: 20px; line-height: 1.1;
         }
 
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.85); color: white; z-index: 10; text-align: center; padding: 20px; box-sizing: border-box; }
         .hidden { display: none !important; }
-        .menu-btn { padding: 12px 30px; margin: 8px; font-size: 18px; cursor: pointer; border: none; border-radius: 50px; background: #ffeb3b; color: #01579b; font-weight: bold; box-shadow: 0 5px #fbc02d; }
+        .menu-btn { padding: 12px 30px; margin: 8px; font-size: 18px; cursor: pointer; border: none; border-radius: 50px; background: #ffeb3b; color: #01579b; font-weight: bold; box-shadow: 0 5px #fbc02d; outline: none; }
+        .menu-btn:active { transform: translateY(3px); box-shadow: 0 2px #fbc02d; }
+        
         #boss-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; height: 12px; background: #333; border: 2px solid white; border-radius: 10px; display: none; }
         #boss-hp-fill { width: 100%; height: 100%; background: #ff1744; }
     </style>
@@ -46,12 +39,10 @@
 
 <div id="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    
     <div class="ui-top-bar">
         <div id="score-display">แต้ม: 0</div>
         <div class="hp-bar-container"><div id="hp-fill"></div></div>
     </div>
-    
     <div id="status-alert">สะสมอาหารเพื่อไปสู้บอส!</div>
     <div id="boss-ui"><div id="boss-hp-fill"></div></div>
 
@@ -65,14 +56,14 @@
     <div id="credits-menu" class="overlay hidden">
         <h2>ข้อมูลผู้จัดทำ</h2>
         <p>ด.ช.ชญานันต์ เดชวงษา ม.2/4 เลขที่ 1</p>
-        <button class="menu-btn" onclick="showMainMenu()">กลับหน้าหลัก</button>
+        <button class="menu-btn" onclick="backToMainFromCredits()">กลับหน้าหลัก</button>
     </div>
 
     <div id="game-over" class="overlay hidden">
         <h2 style="font-size: 32px; color: #ff5252;">GAME OVER</h2>
         <p id="final-score"></p>
         <button class="menu-btn" onclick="startGame()">เล่นใหม่อีกครั้ง</button>
-        <button class="menu-btn" onclick="showMainMenu()">กลับสู่เมนูหลัก</button>
+        <button class="menu-btn" onclick="quitToMenu()">กลับสู่เมนูหลัก</button>
     </div>
 </div>
 
@@ -86,32 +77,37 @@
     const statusAlert = document.getElementById('status-alert');
     
     let gameRunning = false, score = 0, hp = 100, items = [], explosions = [], bubbles = [], lastHungerUpdate = 0;
-    let poisonTimer = 0, bossDefeated = false, bossBullets = []; 
+    let poisonTimer = 0, bossDefeated = false, bossBullets = [], shockwaves = []; 
+    let playerStunTimer = 0;
+
     const player = { x: 400, y: 150, targetX: 400, targetY: 150, facing: 1 };
-    const boss = { active: false, x: 400, y: 800, hp: 50000, maxHp: 50000, freezeTime: 0, attackTimer: 0, state: 'idle', warningX: -500, targetX: 400 };
+    const boss = { 
+        active: false, x: 400, y: 800, hp: 50000, maxHp: 50000, 
+        freezeTime: 0, attackTimer: 0, state: 'idle', 
+        warningX: -500, targetX: 400
+    };
 
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
 
-    function playSound(freq, type, duration, vol=0.08) {
+    function playSound(freq, type, duration, vol=0.1) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.type = type; 
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(vol, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
         osc.connect(gain); gain.connect(audioCtx.destination);
         osc.start(); osc.stop(audioCtx.currentTime + duration);
     }
 
-    // ฟังก์ชันวาดฟองอากาศ
     function updateBubbles() {
         if (Math.random() < 0.05) {
             bubbles.push({ x: Math.random() * canvas.width, y: canvas.height + 20, r: Math.random() * 5 + 2, speed: Math.random() * 2 + 1 });
         }
         bubbles.forEach((b, i) => {
-            b.y -= b.speed;
-            b.x += Math.sin(Date.now() * 0.002 + b.y) * 0.5;
+            b.y -= b.speed; b.x += Math.sin(Date.now() * 0.002 + b.y) * 0.5;
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
             ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
             if (b.y < -20) bubbles.splice(i, 1);
@@ -148,16 +144,20 @@
         ctx.restore();
     }
 
-    function createOldExplosion(x, y) {
+    function createOldExplosion(x, y, fromBoss = false) {
         explosions.push({ x, y, r: 10, alpha: 1 });
         playSound(60, 'sawtooth', 0.5, 0.25);
-        if (boss.active) {
+        if (boss.active && !fromBoss) {
             let dist = Math.sqrt((x - boss.x)**2 + (y - (boss.y + 50))**2);
-            if (dist < 320) { boss.hp -= 800; bossHpFill.style.width = (boss.hp / boss.maxHp * 100) + '%'; }
+            if (dist < 320) { 
+                boss.hp -= 800; 
+                bossHpFill.style.width = (boss.hp / boss.maxHp * 100) + '%'; 
+            }
         }
     }
 
     const updateInput = (e) => {
+        if (!gameRunning || playerStunTimer > 0) return;
         const rect = canvas.getBoundingClientRect();
         const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
         const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
@@ -169,20 +169,31 @@
     canvas.addEventListener('mousemove', updateInput);
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); updateInput(e); }, { passive: false });
 
+    // ฟังก์ชันเริ่มเกม
     function startGame() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
-        gameRunning = true; score = 0; hp = 100; items = []; explosions = []; bossBullets = []; bubbles = [];
-        boss.active = false; boss.hp = 50000; boss.y = 800; bossDefeated = false; 
-        boss.freezeTime = 0; boss.state = 'idle'; boss.targetX = 400;
+        gameRunning = true; score = 0; hp = 100; items = []; explosions = []; bossBullets = []; bubbles = []; shockwaves = [];
+        boss.active = false; boss.hp = 50000; boss.y = 800; bossDefeated = false; playerStunTimer = 0;
+        boss.freezeTime = 0; boss.state = 'idle'; boss.targetX = 400; boss.warningX = -500;
         bossUi.style.display = 'none'; poisonTimer = 0;
-        player.x = 400; player.y = 150; lastHungerUpdate = Date.now();
+        player.x = 400; player.y = 150; player.targetX = 400; player.targetY = 150;
+        lastHungerUpdate = Date.now();
         updateHPUI(); scoreDisplay.innerText = `แต้ม: 0`;
         requestAnimationFrame(animate);
     }
 
-    function showMainMenu() { document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('main-menu').classList.remove('hidden'); gameRunning = false; }
+    // ฟังก์ชันกลับเมนูหลักจาก Game Over (แก้ไขใหม่)
+    function quitToMenu() {
+        gameRunning = false;
+        document.getElementById('game-over').classList.add('hidden');
+        document.getElementById('main-menu').classList.remove('hidden');
+        bossUi.style.display = 'none';
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // ล้างหน้าจอ
+    }
+
     function showCredits() { document.getElementById('main-menu').classList.add('hidden'); document.getElementById('credits-menu').classList.remove('hidden'); }
+    function backToMainFromCredits() { document.getElementById('credits-menu').classList.add('hidden'); document.getElementById('main-menu').classList.remove('hidden'); }
 
     function updateHPUI() {
         hpFill.style.width = Math.max(0, hp) + '%';
@@ -190,11 +201,16 @@
         if (hp <= 0 && gameRunning) gameOver();
     }
 
-    function gameOver() { gameRunning = false; document.getElementById('game-over').classList.remove('hidden'); document.getElementById('final-score').innerText = `แต้มของคุณคือ: ${score}`; }
+    function gameOver() { 
+        gameRunning = false; 
+        document.getElementById('game-over').classList.remove('hidden'); 
+        document.getElementById('final-score').innerText = `แต้มของคุณคือ: ${score}`; 
+    }
 
     function drawFish(x, y, color = '#ff9800', sizeScale = 1, facing = 1) {
         ctx.save(); ctx.translate(x, y); if (facing === -1) ctx.scale(-1, 1);
         ctx.fillStyle = (poisonTimer > 0 && color === '#ff9800') ? '#ea80fc' : color;
+        if (playerStunTimer > 0) ctx.globalAlpha = 0.6; 
         ctx.beginPath(); ctx.ellipse(0, 0, 30*sizeScale, 20*sizeScale, 0, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.moveTo(-25*sizeScale, 0); ctx.lineTo(-45*sizeScale, -15*sizeScale); ctx.lineTo(-45*sizeScale, 15*sizeScale); ctx.closePath(); ctx.fill();
         ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(15*sizeScale, -5*sizeScale, 5*sizeScale, 0, Math.PI*2); ctx.fill();
@@ -204,7 +220,10 @@
 
     function drawBoss() {
         if (!boss.active) return;
-        ctx.save(); ctx.strokeStyle = '#8b0000'; ctx.lineWidth = 18;
+        ctx.save();
+        let shake = (boss.state === 'roaring' && boss.attackTimer < 40) ? (Math.random()-0.5)*35 : 0;
+        ctx.translate(shake, shake);
+        ctx.strokeStyle = '#8b0000'; ctx.lineWidth = 18;
         for(let i=0; i<3; i++) {
             let legMove = Math.sin(Date.now() * 0.01 + i) * 20;
             [-1, 1].forEach(side => {
@@ -216,7 +235,9 @@
             ctx.save(); ctx.translate(boss.x + (side * 170), boss.y); ctx.scale(side, 1);
             let isSmashingSide = (boss.state === 'smashing' && (boss.warningX === (side === -1 ? 150 : 650) || boss.warningX === 400));
             ctx.rotate((isSmashingSide ? 1.0 : -0.3) + Math.sin(Date.now()*0.003)*0.1);
-            ctx.fillStyle = (isSmashingSide && boss.attackTimer < 40 && Math.floor(Date.now()/50) % 2 === 0) ? 'yellow' : '#b71c1c';
+            if (isSmashingSide && boss.attackTimer % 50 < 45) {
+                ctx.fillStyle = (Math.floor(Date.now() / 80) % 2 === 0) ? '#ffeb3b' : '#ff1744'; 
+            } else { ctx.fillStyle = '#b71c1c'; }
             ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(50, -130, 170, -70); ctx.lineTo(150, -30); ctx.lineTo(130, -50); ctx.lineTo(110, -20); ctx.closePath(); ctx.fill();
             ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(50, 60, 160, 20); ctx.lineTo(130, -10); ctx.closePath(); ctx.fill();
             ctx.restore();
@@ -230,9 +251,12 @@
     function animate() {
         if (!gameRunning) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        updateBubbles(); // วาดฟองอากาศพื้นหลัง
+        updateBubbles();
         let now = Date.now();
 
+        if (playerStunTimer > 0) playerStunTimer--;
+
+        // แสดงสถานะแจ้งเตือน
         if (boss.active) { statusAlert.innerText = "💢 บอสปูคลั่ง! HP 50,000"; statusAlert.style.color = "#ff1744"; }
         else if (bossDefeated) { statusAlert.innerText = "สะสมอาหารเพื่อความอยู่รอด"; statusAlert.style.color = "#4caf50"; }
         else {
@@ -244,67 +268,95 @@
 
         if (boss.active && boss.freezeTime > 0) {
             boss.freezeTime--; if (boss.y > 450) boss.y -= 2;
-            ctx.fillStyle = "white"; ctx.font = `bold ${canvas.width < 500 ? 20 : 35}px Tahoma`; ctx.textAlign = "center";
-            ctx.fillText("!!! MEGA BOSS CRAB 50,000 HP !!!", 400, 200);
+            ctx.fillStyle = "white"; ctx.font = `bold 30px Tahoma`; ctx.textAlign = "center";
+            ctx.fillText("!!! MEGA BOSS CRAB !!!", 400, 200);
             drawBoss(); drawFish(player.x, player.y, '#ff9800', 1, player.facing);
             requestAnimationFrame(animate); return;
         }
 
         if (now - lastHungerUpdate > 1000) { hp -= 3; updateHPUI(); lastHungerUpdate = now; }
         if (poisonTimer > 0) { hp -= 0.5; poisonTimer--; updateHPUI(); }
+        
+        if (playerStunTimer <= 0) {
+            player.x += (player.targetX - player.x) * 0.12;
+            player.y += (player.targetY - player.y) * 0.12;
+        }
 
-        player.x += (player.targetX - player.x) * 0.12;
-        player.y += (player.targetY - player.y) * 0.12;
-
+        // สุ่มของร่วง
         if (Math.random() < 0.12) {
             let r = Math.random(), type = 'food';
             if (r < 0.12) type = 'trash'; else if (r < 0.22) type = 'worm'; else if (r < 0.32) type = 'small_fish';
             else if (r < 0.65 && score >= 500) {
-                let rD = Math.random();
-                if (score >= 2000 && rD < 0.25) type = 'jellyfish'; else if (score >= 1000 && rD < 0.5) type = 'big_mine'; else type = 'mine'; 
+                let rd = Math.random();
+                if (score >= 2000 && rd < 0.3) type = 'jellyfish';
+                else if (score >= 1000 && rd < 0.6) type = 'big_mine';
+                else type = 'mine';
             }
             items.push({ x: Math.random()*740+30, y: -50, type, speed: (Math.random()*2+3) });
         }
 
+        // เกิดบอส
         if (score >= 5000 && !boss.active && !bossDefeated) { boss.active = true; bossUi.style.display = 'block'; boss.freezeTime = 180; boss.x = 400; boss.y = 800; }
 
         if (boss.active) {
             boss.attackTimer++;
             if (boss.state === 'idle' && boss.attackTimer > 60) {
                 let r = Math.random();
-                if (r < 0.7) { 
-                    boss.state = 'moving'; let p = Math.random();
+                if (r < 0.15) { boss.state = 'roaring'; boss.attackTimer = 0; }
+                else if (r < 0.75) { 
+                    boss.state = 'moving'; 
+                    let p = Math.random();
                     if (p < 0.33) boss.targetX = 150; else if (p < 0.66) boss.targetX = 400; else boss.targetX = 650;
-                } else boss.state = 'smashing';
-                boss.attackTimer = 0;
+                }
+                else { boss.state = 'smashing'; boss.attackTimer = 0; }
             }
+
+            if (boss.state === 'roaring') {
+                if (boss.attackTimer === 1) {
+                    for(let i=0; i<5; i++) {
+                        setTimeout(() => { shockwaves.push({x: boss.x, y: boss.y + 50, r: 0, a: 1}); playSound(130 - (i*15), 'sawtooth', 0.4, 0.4); }, i * 60);
+                    }
+                    playerStunTimer = 60; 
+                }
+                if (boss.attackTimer > 90) { boss.state = 'idle'; boss.attackTimer = 0; }
+            }
+
             if (boss.state === 'moving') {
                 boss.x += (boss.targetX - boss.x) * 0.08;
                 if (Math.abs(boss.x - boss.targetX) < 5) { boss.state = 'shooting'; boss.attackTimer = 0; }
-            } else if (boss.state === 'shooting') {
+            } 
+            else if (boss.state === 'shooting') {
                 if (boss.attackTimer % 2 === 0) {
-                    for(let o = -100; o <= 100; o += 40) bossBullets.push({x: boss.x + o, y: boss.y - 20, vx: (Math.random()-0.5)*3, vy: -15, r: 10});
+                    for(let o = -100; o <= 100; o += 40) { bossBullets.push({x: boss.x + o, y: boss.y - 20, vx: (Math.random()-0.5)*3, vy: -15, r: 10}); }
                     playSound(1100, 'sine', 0.05, 0.03);
                 }
                 if (boss.attackTimer > 80) boss.state = 'idle';
-            } else if (boss.state === 'smashing') {
-                if (boss.attackTimer === 41) { createOldExplosion(150, 300); if (player.x > 30 && player.x < 270) { hp -= 40; updateHPUI(); } }
-                if (boss.attackTimer === 91) { createOldExplosion(650, 300); if (player.x > 530 && player.x < 770) { hp -= 40; updateHPUI(); } }
-                if (boss.attackTimer === 141) { createOldExplosion(400, 300); if (player.x > 280 && player.x < 520) { hp -= 40; updateHPUI(); } }
+            } 
+            else if (boss.state === 'smashing') {
+                if (boss.attackTimer === 41) { createOldExplosion(150, 300, true); if (player.x > 30 && player.x < 270) { hp -= 40; updateHPUI(); } }
+                if (boss.attackTimer === 91) { createOldExplosion(650, 300, true); if (player.x > 530 && player.x < 770) { hp -= 40; updateHPUI(); } }
+                if (boss.attackTimer === 141) { createOldExplosion(400, 300, true); if (player.x > 280 && player.x < 520) { hp -= 40; updateHPUI(); } }
                 if (boss.attackTimer > 160) { boss.state = 'idle'; boss.warningX = -500; }
                 boss.warningX = boss.attackTimer < 50 ? 150 : (boss.attackTimer < 100 ? 650 : 400);
             }
         }
 
-        if (boss.state === 'smashing' && boss.attackTimer % 10 < 5) {
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)'; ctx.fillRect(boss.warningX - 120, 0, 240, 600);
+        shockwaves.forEach((s, i) => {
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${s.a})`; ctx.lineWidth = 5; ctx.stroke();
+            s.r += 16; s.a -= 0.025; if (s.a <= 0) shockwaves.splice(i, 1);
+        });
+
+        if (boss.active && boss.state === 'smashing' && boss.attackTimer % 10 < 8) {
+            let warnColor = (Math.floor(Date.now() / 80) % 2 === 0) ? 'rgba(255, 235, 59, 0.3)' : 'rgba(255, 0, 0, 0.3)';
+            ctx.fillStyle = warnColor; ctx.fillRect(boss.warningX - 120, 0, 240, 600);
         }
 
         bossBullets.forEach((b, i) => {
             b.y += b.vy; b.x += b.vx;
             ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
-            if (Math.sqrt((player.x-b.x)**2+(player.y-b.y)**2) < 35) { hp -= 8; updateHPUI(); bossBullets.splice(i, 1); playSound(100, 'square', 0.1); }
-            if (b.y < -50) bossBullets.splice(i, 1);
+            if (Math.sqrt((player.x-b.x)**2+(player.y-b.y)**2) < 35) { hp -= 8; updateHPUI(); bossBullets.splice(i, 1); playSound(100, 'square', 0.1, 0.2); }
+            if (b.y < -50 || b.x < -50 || b.x > 850) bossBullets.splice(i, 1);
         });
 
         explosions.forEach((e, i) => {
@@ -319,7 +371,8 @@
             else if (item.type === 'worm') { ctx.fillStyle = '#ff80ab'; ctx.fillRect(item.x-15, item.y-5, 30, 10); }
             else if (item.type === 'small_fish') { drawFish(item.x, item.y, '#00e5ff', 0.6, 1); }
             else if (item.type === 'trash') { ctx.fillStyle = '#9e9e9e'; ctx.fillRect(item.x-12, item.y-12, 24, 24); }
-            else if (item.type.includes('mine')) { drawClassicMine(item.x, item.y, item.type === 'big_mine' ? 30 : 15, item.type === 'big_mine'); }
+            else if (item.type === 'mine') { drawClassicMine(item.x, item.y, 15, false); }
+            else if (item.type === 'big_mine') { drawClassicMine(item.x, item.y, 30, true); }
             else if (item.type === 'jellyfish') { drawJellyfish(item.x, item.y); }
 
             if (boss.active && Math.sqrt((item.x - boss.x)**2 + (item.y - (boss.y + 50))**2) < 220) {
@@ -329,18 +382,18 @@
 
             if (Math.sqrt((player.x - item.x)**2 + (player.y - item.y)**2) < 45) {
                 if (item.type.includes('mine')) { createOldExplosion(item.x, item.y); hp -= (item.type === 'big_mine' ? 50 : 30); }
-                else if (item.type === 'food') { score += 10; hp = Math.min(100, hp + 5); playSound(600, 'sine', 0.1); }
-                else if (item.type === 'worm') { score += 25; hp = Math.min(100, hp + 15); playSound(700, 'sine', 0.1); }
-                else if (item.type === 'small_fish') { score += 100; hp = Math.min(100, hp + 40); playSound(900, 'sine', 0.1); }
-                else if (item.type === 'trash') { hp -= 15; playSound(100, 'square', 0.2); }
-                else if (item.type === 'jellyfish') { poisonTimer = 150; playSound(300, 'square', 0.4); }
+                else if (item.type === 'food') { score += 10; hp = Math.min(100, hp + 5); playSound(650, 'sine', 0.1, 0.35); }
+                else if (item.type === 'worm') { score += 25; hp = Math.min(100, hp + 15); playSound(750, 'sine', 0.1, 0.4); }
+                else if (item.type === 'small_fish') { score += 100; hp = Math.min(100, hp + 40); playSound(950, 'sine', 0.1, 0.45); }
+                else if (item.type === 'trash') { hp -= 15; playSound(120, 'square', 0.2, 0.3); }
+                else if (item.type === 'jellyfish') { poisonTimer = 150; playSound(350, 'square', 0.4, 0.4); }
                 items.splice(i, 1); scoreDisplay.innerText = `แต้ม: ${score}`; updateHPUI(); continue;
             }
             if (item.y > 650) items.splice(i, 1);
         }
 
         drawBoss(); drawFish(player.x, player.y, '#ff9800', 1, player.facing);
-        if (boss.active && boss.hp <= 0) { boss.active = false; bossDefeated = true; bossUi.style.display = 'none'; score += 10000; }
+        if (boss.active && boss.hp <= 0) { boss.active = false; bossDefeated = true; bossUi.style.display = 'none'; boss.state = 'idle'; boss.warningX = -500; score += 10000; }
         requestAnimationFrame(animate);
     }
 </script>
