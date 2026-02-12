@@ -2,37 +2,78 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Fish Adventure: Ultimate Boss</title>
     <style>
+        /* พื้นหลังด้านนอก: ไล่เฉดสีน้ำเงินเข้ม */
         body { 
-            margin: 0; padding: 0; 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; background-color: #01579b; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background: radial-gradient(circle at center, #1a237e 0%, #0d47a1 40%, #010a1a 100%);
             font-family: 'Tahoma', sans-serif; 
             overflow: hidden; 
-            touch-action: none; /* ป้องกันการเลื่อนหน้าจอเวลาเล่นบนมือถือ */
+            touch-action: none; 
+            position: relative;
         }
-        
+
+        /* สร้างฟองอากาศในพื้นหลัง (Background Decoration) */
+        .bg-bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+            animation: floatUp linear infinite;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(110vh) scale(1); opacity: 0; }
+            20% { opacity: 0.5; }
+            100% { transform: translateY(-20vh) scale(1.5); opacity: 0; }
+        }
+
+        #game-outer-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
         #game-container { 
             position: relative; 
             width: 800px; 
             height: 600px; 
             overflow: hidden; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.5); 
-            border: 2px solid #fff; 
+            box-shadow: 0 0 80px rgba(0,0,0,0.8); 
+            border: 4px solid rgba(255, 255, 255, 0.8); 
             background: linear-gradient(#4fc3f7, #01579b); 
+            transform-origin: center;
+            border-radius: 8px;
         }
 
-        /* ส่วนที่เพิ่ม: ทำให้เกมย่อขนาดลงพอดีหน้าจอมือถือโดยอัตโนมัติ */
-        @media (max-width: 850px), (max-height: 650px) {
+        /* ปรับแต่งสำหรับมือถือ: ไม่ให้ภาพแบน และซ่อนขอบ/พื้นหลังพิเศษ */
+        @media (max-width: 800px), (max-height: 600px) {
+            body { background: #01579b; } /* ลดการทำงานของ GPU บนมือถือ */
+            .bg-bubble { display: none; }
             #game-container { 
-                transform: scale(calc(min(98vw / 800, 98vh / 600))); 
-                transform-origin: center center;
+                transform: scale(calc(min(100vw / 800, 100vh / 600))); 
+                border: none; 
+                box-shadow: none;
+                border-radius: 0;
             }
         }
 
         canvas { display: block; width: 100%; height: 100%; }
+
+        /* --- UI เดิมของคุณ --- */
         .ui-top-bar { position: absolute; top: 0; left: 0; width: 100%; height: 50px; display: flex; justify-content: space-between; align-items: center; padding: 0 15px; box-sizing: border-box; pointer-events: none; z-index: 6; }
         #score-display { color: white; font-weight: bold; font-size: 22px; text-shadow: 2px 2px #000; }
         #high-score-ui { color: #ffeb3b; font-size: 14px; text-shadow: 1px 1px #000; position: absolute; top: 45px; left: 15px; }
@@ -45,7 +86,6 @@
         #game-over.show { background: rgba(0, 0, 0, 1); opacity: 1; pointer-events: auto; }
         .hidden { display: none !important; }
         .menu-btn { padding: 12px 30px; margin: 8px; font-size: 18px; cursor: pointer; border: none; border-radius: 50px; background: #ffeb3b; color: #01579b; font-weight: bold; box-shadow: 0 5px #fbc02d; outline: none; }
-        .menu-btn:active { transform: translateY(3px); box-shadow: 0 2px #fbc02d; }
         #boss-ui { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; height: 12px; background: #333; border: 2px solid white; border-radius: 10px; display: none; }
         #boss-hp-fill { width: 100%; height: 100%; background: #ff1744; }
         #boss-speech { position: absolute; background: white; color: black; padding: 8px 15px; border-radius: 15px; font-weight: bold; display: none; z-index: 8; border: 2px solid #333; pointer-events: none; font-size: 18px; white-space: nowrap; }
@@ -53,42 +93,62 @@
 </head>
 <body>
 
-<div id="game-container">
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div class="ui-top-bar">
-        <div>
-            <div id="score-display">แต้ม: 0</div>
-            <div id="high-score-ui">สถิติสูงสุด: 0</div>
+<script>
+    // สร้างฟองอากาศประดับฉาก (เฉพาะบนคอม)
+    if (window.innerWidth > 800) {
+        for (let i = 0; i < 20; i++) {
+            const bubble = document.createElement('div');
+            bubble.className = 'bg-bubble';
+            const size = Math.random() * 40 + 10;
+            bubble.style.width = size + 'px';
+            bubble.style.height = size + 'px';
+            bubble.style.left = Math.random() * 100 + 'vw';
+            bubble.style.animationDuration = (Math.random() * 10 + 5) + 's';
+            bubble.style.animationDelay = (Math.random() * 10) + 's';
+            document.body.appendChild(bubble);
+        }
+    }
+</script>
+
+<div id="game-outer-wrapper">
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui-top-bar">
+            <div>
+                <div id="score-display">แต้ม: 0</div>
+                <div id="high-score-ui">สถิติสูงสุด: 0</div>
+            </div>
+            <div class="hp-bar-container"><div id="hp-fill"></div></div>
         </div>
-        <div class="hp-bar-container"><div id="hp-fill"></div></div>
-    </div>
-    <div id="status-alert">สะสมอาหารเพื่อไปสู้บอส!</div>
-    <div id="boss-ui"><div id="boss-hp-fill"></div></div>
-    <div id="boss-speech">พี่จ๋าไม่ไหวแล้ว</div>
+        <div id="status-alert">สะสมอาหารเพื่อไปสู้บอส!</div>
+        <div id="boss-ui"><div id="boss-hp-fill"></div></div>
+        <div id="boss-speech">พี่จ๋าไม่ไหวแล้ว</div>
 
-    <div id="main-menu" class="overlay">
-        <h1 style="font-size: 50px; color: #ffeb3b; text-shadow: 4px 4px #000;">FISH ADVENTURE</h1>
-        <p>แต้มถึง 5,000 เพื่อสู้บอส!</p>
-        <button class="menu-btn" onclick="handleBtnClick(startGame)">เริ่มเกม</button>
-        <button class="menu-btn" onclick="handleBtnClick(showCredits)">ผู้จัดทำ</button>
-    </div>
+        <div id="main-menu" class="overlay">
+            <h1 style="font-size: 50px; color: #ffeb3b; text-shadow: 4px 4px #000;">FISH ADVENTURE</h1>
+            <p>แต้มถึง 5,000 เพื่อสู้บอส!</p>
+            <button class="menu-btn" onclick="handleBtnClick(startGame)">เริ่มเกม</button>
+            <button class="menu-btn" onclick="handleBtnClick(showCredits)">ผู้จัดทำ</button>
+        </div>
 
-    <div id="credits-menu" class="overlay hidden">
-        <h2>ข้อมูลผู้จัดทำ</h2>
-        <p style="font-size: 24px; color: #ffeb3b;">ด.ช.ชญานันต์ เดชวงษา ม.2/4 เลขที่ 1</p>
-        <button class="menu-btn" onclick="handleBtnClick(backToMainFromCredits)">กลับหน้าหลัก</button>
-    </div>
+        <div id="credits-menu" class="overlay hidden">
+            <h2>ข้อมูลผู้จัดทำ</h2>
+            <p style="font-size: 24px; color: #ffeb3b;">ด.ช.ชญานันต์ เดชวงษา ม.2/4 เลขที่ 1</p>
+            <button class="menu-btn" onclick="handleBtnClick(backToMainFromCredits)">กลับหน้าหลัก</button>
+        </div>
 
-    <div id="game-over" class="overlay hidden">
-        <h2 style="font-size: 40px; color: #ff5252; text-shadow: 2px 2px #000;">GAME OVER</h2>
-        <p id="final-score" style="font-size: 24px;"></p>
-        <p id="new-record" style="color: #ffeb3b; font-weight: bold; display: none;">!!! NEW RECORD !!!</p>
-        <button class="menu-btn" onclick="handleBtnClick(startGame)">เล่นใหม่อีกครั้ง</button>
-        <button class="menu-btn" onclick="handleBtnClick(quitToMenu)">กลับสู่เมนูหลัก</button>
+        <div id="game-over" class="overlay hidden">
+            <h2 style="font-size: 40px; color: #ff5252; text-shadow: 2px 2px #000;">GAME OVER</h2>
+            <p id="final-score" style="font-size: 24px;"></p>
+            <p id="new-record" style="color: #ffeb3b; font-weight: bold; display: none;">!!! NEW RECORD !!!</p>
+            <button class="menu-btn" onclick="handleBtnClick(startGame)">เล่นใหม่อีกครั้ง</button>
+            <button class="menu-btn" onclick="handleBtnClick(quitToMenu)">กลับสู่เมนูหลัก</button>
+        </div>
     </div>
 </div>
 
 <script>
+    /* JavaScript ตัวเดิมของคุณทั้งหมด (ไม่ได้ตัดออก) */
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const hpFill = document.getElementById('hp-fill');
